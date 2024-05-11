@@ -22,12 +22,11 @@ func isDigitValid(x int, y int, matrix []string) bool {
 
 type validRune struct {
 	content []rune
-	valid bool
+	valid   bool
 }
 
-
 func main() {
-	file, err := os.Open("day3/input") // For read access.
+	file, err := os.Open("day3/input.txt") // For read access.
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -43,8 +42,6 @@ func main() {
 		fmt.Println(engineMatrix[line])
 	}
 
-
-
 	var res int
 	fmt.Printf("Valor atual: %d\n", res)
 	for x, str := range engineMatrix {
@@ -53,13 +50,17 @@ func main() {
 		for y, b := range str {
 			if unicode.IsDigit(rune(b)) {
 				cur_word.content = append(cur_word.content, b)
-				if isDigitValid(x, y, engineMatrix){
+				if isDigitValid(x, y, engineMatrix) {
 					cur_word.valid = true
 				}
-			} else if b == '.' && len(cur_word.content) != 0 {
+			}
+			if !unicode.IsDigit(rune(b)) || y == len(str)-1 {
 				if cur_word.valid {
 					fmt.Printf("Palavra atual: %c e seu tamanho: %d\n", cur_word.content, len(cur_word.content))
-					val, _ := strconv.Atoi(string(cur_word.content))
+					val, err := strconv.Atoi(string(cur_word.content))
+					if err != nil {
+						log.Fatal(err)
+					}
 					res += val
 					fmt.Printf("Valor atual: %d\n", res)
 				}
@@ -67,7 +68,6 @@ func main() {
 				cur_word.valid = false
 			}
 		}
-
 	}
 
 	if err := scanner.Err(); err != nil {
