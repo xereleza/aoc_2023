@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"math"
 	"os"
 	"strconv"
 	"strings"
@@ -15,18 +16,35 @@ func main() {
 	}
 	defer file.Close()
 	info, _ := file.Stat()
-	fmt.Println(info.Size())
 	buf := make([]byte, info.Size())
 	file.Read(buf)
 	contents := strings.Split(string(buf), "\n\n")
-	//fmt.Println(contents)
+	print(contents)
 	seeds := get_seeds(contents[0])
-	fmt.Println("seeds:", seeds)
-	for i := 1; i < len(contents); i++ {
-		_map := get_next_map(contents[i:])
-		fmt.Println("map:", _map)
-		fmt.Println("compute:", _map.compute())
+	res := math.MaxInt32
+	var maps []Maps
+	for _, strmap := range contents[1:] {
+		maps = append(maps, get_next_map(strmap).compute())
 	}
+	for _, seed := range seeds {
+		seed, err := strconv.Atoi(seed)
+		if err != nil {
+			log.Fatal(err)
+		}
+		for _, _maps := range maps {
+			for _, _map := range _maps.maps {
+				if _map.source <= seed && seed <= _map.source+_map.length {
+					seed += _map.destination - _map.source
+					break
+				}
+			}
+		}
+		if seed < res {
+			res = seed
+		}
+	}
+	fmt.Println("Saída final do programa ~~~uhul")
+	fmt.Println(res)
 }
 
 func get_seeds(seeds_detail string) []string {
@@ -40,30 +58,38 @@ type Range struct {
 	length      string
 }
 
-type Map struct {
+type Maps struct {
 	entries []Range
+	maps    []Map
 }
 
-func (m Map) compute() map[int]int {
-	_map := make(map[int]int)
-	for _, _range := range m.entries {
-		length, _ := strconv.Atoi(_range.length)
-		source, _ := strconv.Atoi(_range.source)
-		destination, _ := strconv.Atoi(_range.destination)
-		_map[source] = destination
-		for i := 1; i < length; i++ {
-			_map[source+i] = destination + i
-		}
+type Map struct {
+	length      int
+	source      int
+	destination int
+}
+
+func (maps Maps) compute() Maps {
+	// [length, source, destination]
+	var m Map
+	for _, _range := range maps.entries {
+		m.length, _ = strconv.Atoi(_range.length)
+		m.source, _ = strconv.Atoi(_range.source)
+		m.destination, _ = strconv.Atoi(_range.destination)
+		maps.maps = append(maps.maps, m)
 	}
-	return _map
+	return maps
 }
 
-func get_next_map(contents []string) Map {
+func get_next_map(contents string) Maps {
 	_map := make([]Range, 0)
-	entries := strings.Split(strings.Split(contents[0], "map:\n")[1], "\n")
+	contents = strings.Trim(contents, "\n\n")
+	fmt.Println(contents)
+	fmt.Println("<<--------->")
+	entries := strings.Split(strings.Split(contents, "map:\n")[1], "\n")
 	for _, coords := range entries {
 		split := strings.Split(coords, " ")
 		_map = append(_map, Range{split[0], split[1], split[2]})
 	}
-	return Map{_map}
+	return Maps{_map, make([]Map, 0)}
 }
