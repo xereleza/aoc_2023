@@ -5,7 +5,6 @@ import (
 	"log"
 	"math"
 	"os"
-	"sort"
 	"strconv"
 	"strings"
 )
@@ -20,29 +19,40 @@ func main() {
 	buf := make([]byte, info.Size())
 	file.Read(buf)
 	contents := strings.Split(string(buf), "\n\n")
+	//fmt.Println(contents)
 	seeds := get_seeds(contents[0])
 	res := math.MaxInt32
 	var maps []Maps
 	for _, strmap := range contents[1:] {
-		maps = append(maps, get_next_map(&strmap).compute())
+		_map := get_next_map(&strmap)
+		//fmt.Println(_map)
+		maps = append(maps, _map.compute())
 	}
-	for i, seed := range seeds {
-		fmt.Println(seed)
-		seed, _ := strconv.Atoi(seed)
+	fmt.Println(maps)
+
+	for i := 0; i < len(seeds); i += 2 {
+
+		_seed, _ := strconv.Atoi(seeds[i])
 		intRange, _ := strconv.Atoi(seeds[i+1])
-		for seed := range seed + intRange {
-			for _, _maps := range maps {
-				for _, _map := range _maps.maps {
-					if _map.source <= seed && seed <= _map.source+_map.length {
-						seed += _map.destination - _map.source
-						break
-					}
-				}
+
+		fmt.Println(_seed)
+		fmt.Println(intRange)
+
+		seed := &Interval{_seed, _seed + intRange - 1}
+		mapped, not_mapped := make([]Interval, 0), make([]Interval, 0)
+
+		for _, _maps := range maps {
+			for _, _map := range _maps.maps {
+
+				_mapped, _not_mapped := intervalSplit(seed, _map.source, _map.source+_map.length-1, _map.destination-_map.source)
+
+				mapped = append(mapped, _mapped...)
+				not_mapped = append(not_mapped, _not_mapped...)
 			}
-			if seed < res {
-				res = seed
-			}
+			fmt.Println(mapped)
+			fmt.Println(not_mapped)
 		}
+
 	}
 	fmt.Println("Saída final do programa ~~~uhul")
 	fmt.Println(res)
