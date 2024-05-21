@@ -60,7 +60,6 @@ func main() {
 
 func get_seeds(seeds_detail string) []string {
 	return strings.Split(seeds_detail, " ")[1:]
-
 }
 
 type Range struct {
@@ -114,6 +113,7 @@ func (interval *Interval) offset(value int) {
 }
 
 func intervalSplit(interval *Interval, mapLeft int, mapRight int, offset int) ([]Interval, []Interval) {
+	// returns computed and non-computed
 	// no intersection
 	if mapRight < interval.left || interval.right < mapLeft {
 		return []Interval{}, []Interval{*interval}
@@ -124,7 +124,7 @@ func intervalSplit(interval *Interval, mapLeft int, mapRight int, offset int) ([
 		if mapRight < interval.right {
 			computed := &Interval{interval.left, mapRight}
 			computed.offset(offset)
-			return []Interval{*computed}, []Interval{Interval{mapRight + 1, interval.right}}
+			return []Interval{*computed}, []Interval{{mapRight + 1, interval.right}}
 			//ml--l--r---mr
 		}
 		computed := &Interval{interval.left, interval.right}
@@ -136,11 +136,11 @@ func intervalSplit(interval *Interval, mapLeft int, mapRight int, offset int) ([
 	if mapRight < interval.right {
 		computed := &Interval{mapLeft, mapRight}
 		computed.offset(offset)
-		return []Interval{*computed}, []Interval{Interval{interval.left, mapLeft - 1}, Interval{mapRight + 1, interval.right}}
+		return []Interval{*computed}, []Interval{{interval.left, mapLeft - 1}, {mapRight + 1, interval.right}}
 	}
 	//-l--ml--r--mr
 	computed := &Interval{mapLeft, interval.right}
 	computed.offset(offset)
-	return []Interval{*computed}, []Interval{Interval{interval.left, mapLeft - 1}, Interval{mapRight + 1, interval.right}}
+	return []Interval{*computed}, []Interval{{interval.left, mapLeft - 1}, {mapRight + 1, interval.right}}
 
 }
