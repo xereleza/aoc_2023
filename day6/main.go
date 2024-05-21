@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"math"
 	"os"
@@ -20,13 +21,26 @@ func main() {
 	buf := make([]byte, info.Size())
 	file.Read(buf)
 	contents := strings.Split(string(buf), "\n")
-	times := parse(contents[0])
-	distances := parse(contents[1])
+	part_1(contents)
+	part_2(contents)
+
+}
+
+func part_2(contents []string) {
+	time := parse_2(contents[0])
+	distance := parse_2(contents[1])
+
+	fmt.Println("Part 2:", measure(time, distance))
+}
+
+func part_1(contents []string) {
+	times := parse_1(contents[0])
+	distances := parse_1(contents[1])
 	res := int64(1)
 	for i, time := range times {
 		res *= measure(time, distances[i])
 	}
-	print(res)
+	fmt.Println("Part 1:", res)
 }
 
 func measure(time int, distance int) int64 {
@@ -49,11 +63,16 @@ func quadratic_roots(a int, b int, c int) (decimal.Decimal, decimal.Decimal) {
 	return decimal.NewFromFloat((-float64(b) + math.Sqrt(d)) / float64(2*a)), decimal.NewFromFloat((-float64(b) - math.Sqrt(d)) / float64(2*a))
 }
 
-func parse(contents string) []int {
+func parse_1(contents string) []int {
 	parsed := make([]int, 0)
 	for _, _str := range strings.FieldsFunc(contents, func(r rune) bool { return r == ' ' })[1:] {
 		_int, _ := strconv.Atoi(_str)
 		parsed = append(parsed, _int)
 	}
+	return parsed
+}
+
+func parse_2(contents string) int {
+	parsed, _ := strconv.Atoi(strings.Join(strings.FieldsFunc(contents, func(r rune) bool { return r == ' ' })[1:], ""))
 	return parsed
 }
