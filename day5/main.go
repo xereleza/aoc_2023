@@ -22,7 +22,6 @@ func main() {
 
 	seeds := getSeeds(contents[0])
 	maps := parseMaps(contents[1:])
-
 	res := processSeeds(seeds, maps)
 
 	fmt.Println("Final Result:", res)
@@ -66,9 +65,9 @@ func parseMap(mapStr string) (Map, error) {
 			// Skip lines that do not contain exactly three fields
 			continue
 		}
-		length, err1 := strconv.Atoi(fields[0])
+		destination, err1 := strconv.Atoi(fields[0])
 		source, err2 := strconv.Atoi(fields[1])
-		destination, err3 := strconv.Atoi(fields[2])
+		length, err3 := strconv.Atoi(fields[2])
 		if err1 != nil || err2 != nil || err3 != nil {
 			return Map{}, fmt.Errorf("invalid integer values in mapping: %v", line)
 		}
@@ -115,20 +114,22 @@ func (interval *Interval) offset(value int) {
 }
 
 func applyMappings(m Map, intervals []Interval) []Interval {
+	var resIntervals []Interval
 	for _, mapping := range m.mappings {
 		var newIntervals []Interval
 		for _, interval := range intervals {
 			mapped, unmapped := splitAndMapInterval(interval, mapping)
-			if mapped != nil {
-				newIntervals = append(newIntervals, mapped...)
+			if len(mapped) > 0 {
+				resIntervals = append(resIntervals, mapped...)
 			}
-			if unmapped != nil {
+			if len(unmapped) > 0 {
 				newIntervals = append(newIntervals, unmapped...)
 			}
 		}
 		intervals = newIntervals
 	}
-	return intervals
+	resIntervals = append(resIntervals, intervals...)
+	return resIntervals
 }
 
 func splitAndMapInterval(interval Interval, mapping Mapping) ([]Interval, []Interval) {
@@ -138,14 +139,14 @@ func splitAndMapInterval(interval Interval, mapping Mapping) ([]Interval, []Inte
 		return []Interval{}, []Interval{interval}
 	}
 
-	if mapping.source < interval.left {
+	if mapping.source <= interval.left {
 		//ml--l--mr--r
 		if mapping.source+mapping.length-1 < interval.right {
 			computed := &Interval{interval.left, mapping.source + mapping.length - 1}
 			computed.offset(mapping.destination - mapping.source)
 			return []Interval{*computed}, []Interval{{mapping.source + mapping.length - 1 + 1, interval.right}}
-			//ml--l--r---mr
 		}
+		//ml--l--r---mr
 		computed := &Interval{interval.left, interval.right}
 		computed.offset(mapping.destination - mapping.source)
 		return []Interval{*computed}, []Interval{}
@@ -160,6 +161,6 @@ func splitAndMapInterval(interval Interval, mapping Mapping) ([]Interval, []Inte
 	//-l--ml--r--mr
 	computed := &Interval{mapping.source, interval.right}
 	computed.offset(mapping.destination - mapping.source)
-	return []Interval{*computed}, []Interval{{interval.left, mapping.source - 1}, {mapping.source + mapping.length - 1 + 1, interval.right}}
+	return []Interval{*computed}, []Interval{{interval.left, mapping.source - 1}}
 
 }
