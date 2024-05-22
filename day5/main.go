@@ -19,87 +19,89 @@ func main() {
 	buf := make([]byte, info.Size())
 	file.Read(buf)
 	contents := strings.Split(string(buf), "\n\n")
-	//fmt.Println(contents)
-	seeds := get_seeds(contents[0])
-	res := math.MaxInt32
-	var maps []Maps
-	for _, strmap := range contents[1:] {
-		_map := get_next_map(&strmap)
-		//fmt.Println(_map)
-		maps = append(maps, _map.compute())
-	}
-	fmt.Println(maps)
 
-	for i := 0; i < len(seeds); i += 2 {
+	seeds := getSeeds(contents[0])
+	maps := parseMaps(contents[1:])
 
-		_seed, _ := strconv.Atoi(seeds[i])
-		intRange, _ := strconv.Atoi(seeds[i+1])
+	res := processSeeds(seeds, maps)
 
-		fmt.Println(_seed)
-		fmt.Println(intRange)
+	fmt.Println("Final Result:", res)
+}
 
-		seed := &Interval{_seed, _seed + intRange - 1}
-		mapped, not_mapped := make([]Interval, 0), make([]Interval, 0)
-
-		for _, _maps := range maps {
-			for _, _map := range _maps.maps {
-
-				_mapped, _not_mapped := intervalSplit(seed, _map.source, _map.source+_map.length-1, _map.destination-_map.source)
-
-				mapped = append(mapped, _mapped...)
-				not_mapped = append(not_mapped, _not_mapped...)
-			}
-			fmt.Println(mapped)
-			fmt.Println(not_mapped)
+func getSeeds(seedData string) []Interval {
+	seedStrings := strings.Split(strings.Split(seedData, ": ")[1], " ")
+	seeds := make([]Interval, 0)
+	for i := 0; i < len(seedStrings); i += 2 {
+		if i+1 >= len(seedStrings) {
+			log.Fatalf("Invalid seed data: expected pairs of values but found an odd number.")
 		}
-
+		seed, err1 := strconv.Atoi(seedStrings[i])
+		seedRange, err2 := strconv.Atoi(seedStrings[i+1])
+		if err1 != nil || err2 != nil {
+			log.Fatalf("Invalid seed data: expected integer values but found %v and %v.", seedStrings[i], seedStrings[i+1])
+		}
+		seeds = append(seeds, Interval{seed, seed + seedRange - 1})
 	}
-	fmt.Println("Saída final do programa ~~~uhul")
-	fmt.Println(res)
+	return seeds
 }
 
-func get_seeds(seeds_detail string) []string {
-	return strings.Split(seeds_detail, " ")[1:]
-}
-
-type Range struct {
-	destination string
-	source      string
-	length      string
-}
-
-type Maps struct {
-	entries []Range
-	maps    []Map
-}
-
-type Map struct {
-	length      int
-	source      int
-	destination int
-}
-
-func (maps Maps) compute() Maps {
-	// [length, source, destination]
-	var m Map
-	for _, _range := range maps.entries {
-		m.length, _ = strconv.Atoi(_range.length)
-		m.source, _ = strconv.Atoi(_range.source)
-		m.destination, _ = strconv.Atoi(_range.destination)
-		maps.maps = append(maps.maps, m)
+func parseMaps(mapData []string) []Map {
+	var maps []Map
+	for _, mapStr := range mapData {
+		parsedMap, err := parseMap(mapStr)
+		if err != nil {
+			log.Fatalf("Error parsing map: %v", err)
+		}
+		maps = append(maps, parsedMap)
 	}
 	return maps
 }
 
-func get_next_map(contents *string) Maps {
-	_map := make([]Range, 0)
-	*contents = strings.Trim(*contents, "\n\n")
-	entries := strings.Split(strings.Split(*contents, "map:\n")[1], "\n")
-	for _, coords := range entries {
-		split := strings.Split(coords, " ")
-		_map = append(_map, Range{split[0], split[1], split[2]})
+func parseMap(mapStr string) (Map, error) {
+	lines := strings.Split(strings.Trim(mapStr, "\n"), "\n")
+	mappings := make([]Mapping, 0, len(lines))
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		if len(fields) != 3 {
+			// Skip lines that do not contain exactly three fields
+			continue
+		}
+		length, err1 := strconv.Atoi(fields[0])
+		source, err2 := strconv.Atoi(fields[1])
+		destination, err3 := strconv.Atoi(fields[2])
+		if err1 != nil || err2 != nil || err3 != nil {
+			return Map{}, fmt.Errorf("invalid integer values in mapping: %v", line)
+		}
+		mappings = append(mappings, Mapping{length, source, destination})
 	}
-	return Maps{_map, make([]Map, 0)}
+	return Map{mappings}, nil
+}
+
+func processSeeds(seeds []Interval, maps []Map) int {
+	minValue := math.MaxInt32
+	for _, interval := range seeds {
+		mappedIntervals := []Interval{interval}
+		for _, m := range maps {
+			mappedIntervals = applyMappings(m, mappedIntervals)
+		}
+
+		for _, inter := range mappedIntervals {
+			if inter.left < minValue {
+				minValue = inter.left
+			}
+		}
+	}
+	return minValue
+}
+
+type Map struct {
+	mappings []Mapping
+}
+
+type Mapping struct {
+	length      int
+	source      int
+	destination int
 }
 
 type Interval struct {
@@ -112,35 +114,52 @@ func (interval *Interval) offset(value int) {
 	interval.right += value
 }
 
-func intervalSplit(interval *Interval, mapLeft int, mapRight int, offset int) ([]Interval, []Interval) {
+func applyMappings(m Map, intervals []Interval) []Interval {
+	for _, mapping := range m.mappings {
+		var newIntervals []Interval
+		for _, interval := range intervals {
+			mapped, unmapped := splitAndMapInterval(interval, mapping)
+			if mapped != nil {
+				newIntervals = append(newIntervals, mapped...)
+			}
+			if unmapped != nil {
+				newIntervals = append(newIntervals, unmapped...)
+			}
+		}
+		intervals = newIntervals
+	}
+	return intervals
+}
+
+func splitAndMapInterval(interval Interval, mapping Mapping) ([]Interval, []Interval) {
 	// returns computed and non-computed
 	// no intersection
-	if mapRight < interval.left || interval.right < mapLeft {
-		return []Interval{}, []Interval{*interval}
+	if mapping.source+mapping.length-1 < interval.left || interval.right < mapping.source {
+		return []Interval{}, []Interval{interval}
 	}
 
-	if mapLeft < interval.left {
+	if mapping.source < interval.left {
 		//ml--l--mr--r
-		if mapRight < interval.right {
-			computed := &Interval{interval.left, mapRight}
-			computed.offset(offset)
-			return []Interval{*computed}, []Interval{{mapRight + 1, interval.right}}
+		if mapping.source+mapping.length-1 < interval.right {
+			computed := &Interval{interval.left, mapping.source + mapping.length - 1}
+			computed.offset(mapping.destination - mapping.source)
+			return []Interval{*computed}, []Interval{{mapping.source + mapping.length - 1 + 1, interval.right}}
 			//ml--l--r---mr
 		}
 		computed := &Interval{interval.left, interval.right}
-		computed.offset(offset)
+		computed.offset(mapping.destination - mapping.source)
 		return []Interval{*computed}, []Interval{}
 
 	}
 	//-l--ml--mr--r
-	if mapRight < interval.right {
-		computed := &Interval{mapLeft, mapRight}
-		computed.offset(offset)
-		return []Interval{*computed}, []Interval{{interval.left, mapLeft - 1}, {mapRight + 1, interval.right}}
+	if mapping.source+mapping.length-1 < interval.right {
+		computed := &Interval{mapping.source, mapping.source + mapping.length - 1}
+		computed.offset(mapping.destination - mapping.source)
+		return []Interval{*computed}, []Interval{{interval.left, mapping.source - 1}, {mapping.source + mapping.length - 1 + 1, interval.right}}
 	}
 	//-l--ml--r--mr
-	computed := &Interval{mapLeft, interval.right}
-	computed.offset(offset)
-	return []Interval{*computed}, []Interval{{interval.left, mapLeft - 1}, {mapRight + 1, interval.right}}
+	computed := &Interval{mapping.source, interval.right}
+	computed.offset(mapping.destination - mapping.source)
+	return []Interval{*computed}, []Interval{{interval.left, mapping.source - 1}, {mapping.source + mapping.length - 1 + 1, interval.right}}
 
 }
