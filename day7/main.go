@@ -23,12 +23,20 @@ func (h Hand) setup() *Hand {
 		h.counter[k] = i + 1
 	}
 	max := 1
+	jokers := 0
 	var ref string
 	for k, v := range h.counter {
-		if v > max {
+		if k == "J" {
+			jokers = v
+		} else if v > max {
 			max = v
 			ref = k
 		}
+	}
+	if jokers == 5 {
+		max = 5
+	} else {
+		max += jokers
 	}
 	switch max {
 	case 1:
@@ -46,7 +54,7 @@ func (h Hand) setup() *Hand {
 
 func checkTwoPair(counter map[string]int, ref *string) int {
 	for k, v := range counter {
-		if k == *ref {
+		if k == *ref || k == "J" {
 			continue
 		}
 		if v == 2 {
@@ -58,7 +66,7 @@ func checkTwoPair(counter map[string]int, ref *string) int {
 
 func checkFullHouse(counter map[string]int, ref *string) int {
 	for k, v := range counter {
-		if k == *ref {
+		if k == *ref || k == "J" {
 			continue
 		}
 		if v == 2 {
@@ -115,16 +123,16 @@ func tiebreaker(a string, b string) int {
 		'A': 13,
 		'K': 12,
 		'Q': 11,
-		'J': 10,
-		'T': 9,
-		'9': 8,
-		'8': 7,
-		'7': 6,
-		'6': 5,
-		'5': 4,
-		'4': 3,
-		'3': 2,
-		'2': 1,
+		'T': 10,
+		'9': 9,
+		'8': 8,
+		'7': 7,
+		'6': 6,
+		'5': 5,
+		'4': 4,
+		'3': 3,
+		'2': 2,
+		'J': 1,
 	}
 	for i := range 5 {
 		if a[i] == b[i] {
