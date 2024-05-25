@@ -29,45 +29,47 @@ func count_steps1(instructions string, _map map[string]*Tree) int {
 	return steps
 }
 
+// greatest common divisor (GCD) via Euclidean algorithm
+func GCD(a, b int) int {
+	for b != 0 {
+		t := b
+		b = a % b
+		a = t
+	}
+	return a
+}
+
+// find Least Common Multiple (LCM) via GCD
+func LCM(a, b int, integers ...int) int {
+	result := a * b / GCD(a, b)
+
+	for i := 0; i < len(integers); i++ {
+		result = LCM(result, integers[i])
+	}
+
+	return result
+}
+
 func count_steps2(instructions string, _map map[string]*Tree) int {
-	steps := 0
-	current := make([]string, 0)
+	periods := make([]int, 0)
 	for k := range _map {
-		if k[2] == 'A' {
-			current = append(current, k)
+		if k[2] != 'A' {
+			continue
 		}
-	}
-	finished := false
-	for !finished {
-		for _, direction := range instructions {
-			if finished {
-				break
+		_steps := 0
+		for current := k; current[2] != 'Z'; {
+			for _, direction := range instructions {
+				if current[2] == 'Z' {
+					break
+				}
+				current = _map[current].walk(direction).val
+				_steps += 1
 			}
-			fmt.Println("before:", current)
-			walk(_map, &current, &direction)
-			fmt.Println("after:", current)
-			finished = check(&current)
-			steps += 1
 		}
+		periods = append(periods, _steps)
 	}
-	return steps
-}
 
-func check(current *[]string) bool {
-	for _, name := range *current {
-		if name[2] != 'Z' {
-			return false
-		}
-	}
-	return true
-}
-
-func walk(_map map[string]*Tree, current *[]string, direction *rune) {
-	next := make([]string, 0)
-	for _, name := range *current {
-		next = append(next, _map[name].walk(*direction).val)
-	}
-	*current = next
+	return LCM(periods[0], periods[1], periods...)
 }
 
 func load_map(input_path string) (string, map[string]*Tree) {
